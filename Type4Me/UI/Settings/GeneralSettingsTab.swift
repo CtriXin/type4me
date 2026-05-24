@@ -716,11 +716,11 @@ private final class PreviewState: FloatingBarState {
     private var textIndex = 0
 
     private let sampleTexts = [
-        "这里是一个动向，这里是",
-        "这里是一个动向，这里是一",
-        "这里是一个动向，这里是两个动向，",
-        "这里是一个动向，这里是两个动向，这里是",
-        "这里是一个动向，这里是两个动向，这里是一个。",
+        "今天天气不错，我们",
+        "今天天气不错，我们去",
+        "今天天气不错，我们去公园",
+        "今天天气不错，我们去公园走走",
+        "今天天气不错，我们去公园走走吧。",
     ]
 
     var transcriptionText: String {
