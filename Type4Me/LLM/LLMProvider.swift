@@ -15,6 +15,7 @@ enum LLMProvider: String, CaseIterable, Codable, Sendable {
     case zhipu
     case claude
     case ollama
+    case custom
 
     var displayName: String {
         switch self {
@@ -30,6 +31,7 @@ enum LLMProvider: String, CaseIterable, Codable, Sendable {
         case .zhipu:       return L("智谱 (GLM)", "Zhipu (GLM)")
         case .claude:      return "Claude (Anthropic)"
         case .ollama:      return L("Ollama (本地模型)", "Ollama (Local)")
+        case .custom:      return L("自定义 (OpenAI 兼容)", "Custom (OpenAI Compatible)")
         }
     }
 
@@ -47,6 +49,7 @@ enum LLMProvider: String, CaseIterable, Codable, Sendable {
         case .zhipu:       return "https://open.bigmodel.cn/api/paas/v4"
         case .claude:      return "https://api.anthropic.com/v1"
         case .ollama:      return "http://localhost:11434/v1"
+        case .custom:      return ""
         }
     }
 
@@ -130,7 +133,7 @@ enum LLMProvider: String, CaseIterable, Codable, Sendable {
                 FieldOption(value: "claude-haiku-4-5-20251001", label: "claude-haiku-4-5-20251001"),
                 FieldOption(value: "claude-sonnet-4-5-20250929", label: "claude-sonnet-4-5-20250929"),
             ]
-        case .openrouter, .ollama:
+        case .openrouter, .ollama, .custom:
             return []
         }
     }

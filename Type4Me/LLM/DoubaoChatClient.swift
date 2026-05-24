@@ -33,7 +33,7 @@ actor DoubaoChatClient: LLMClient {
 
     /// Process text through Doubao ARK API (OpenAI-compatible streaming).
     /// Returns the full LLM response as a single string.
-    func process(text: String, prompt: String, config: LLMConfig) async throws -> String {
+    func process(text: String, prompt: String, config: LLMConfig, onToken: (@Sendable (String) -> Void)? = nil) async throws -> String {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return text }
         let finalPrompt = prompt.replacingOccurrences(of: "{text}", with: trimmedText)
@@ -71,7 +71,7 @@ actor DoubaoChatClient: LLMClient {
 
         logger.info("LLM request: \(text.count) chars, endpoint=\(config.model), stream=true")
 
-        let result = try await processStreaming(request: request, model: config.model)
+        let result = try await processStreaming(request: request, model: config.model, onToken: onToken)
 
         logger.info("LLM result: \(result.count) chars")
         return result.strippingThinkTags()
@@ -79,7 +79,7 @@ actor DoubaoChatClient: LLMClient {
 
     // MARK: - Streaming (SSE)
 
-    private func processStreaming(request: URLRequest, model: String) async throws -> String {
+    private func processStreaming(request: URLRequest, model: String, onToken: (@Sendable (String) -> Void)? = nil) async throws -> String {
         let (bytes, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw LLMError.requestFailed(0)
@@ -102,6 +102,7 @@ actor DoubaoChatClient: LLMClient {
                   let content = chunk.choices.first?.delta.content
             else { continue }
             result += content
+            onToken?(content)
         }
 
         if result.isEmpty && lineCount > 0 {

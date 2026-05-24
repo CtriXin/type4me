@@ -21,6 +21,7 @@ enum GeminiLLMTag:      OpenAICompatibleLLMTag { static let provider = LLMProvid
 enum DeepSeekLLMTag:    OpenAICompatibleLLMTag { static let provider = LLMProvider.deepseek }
 enum ZhipuLLMTag:       OpenAICompatibleLLMTag { static let provider = LLMProvider.zhipu }
 enum OllamaLLMTag:      OpenAICompatibleLLMTag { static let provider = LLMProvider.ollama }
+enum CustomLLMTag:      OpenAICompatibleLLMTag { static let provider = LLMProvider.custom }
 
 // MARK: - Generic Config
 
@@ -31,6 +32,12 @@ struct OpenAICompatibleLLMConfig<Tag: OpenAICompatibleLLMTag>: LLMProviderConfig
     static var credentialFields: [CredentialField] {
         let p = Tag.provider
         let models = p.modelOptions
+        let baseURLPlaceholder: String = {
+            if p == .custom {
+                return L("https://your-api.com/v1", "https://your-api.com/v1")
+            }
+            return p.defaultBaseURL
+        }()
         return [
             CredentialField(
                 key: "apiKey", label: "API Key",
@@ -40,13 +47,13 @@ struct OpenAICompatibleLLMConfig<Tag: OpenAICompatibleLLMTag>: LLMProviderConfig
             CredentialField(
                 key: "model", label: L("模型", "Model"),
                 placeholder: L("模型名称或 endpoint ID", "Model name or endpoint ID"),
-                isSecure: false, isOptional: false,
+                isSecure: false, isOptional: p == .custom,
                 defaultValue: models.first?.value ?? "",
                 options: models, allowCustomInput: true
             ),
             CredentialField(
                 key: "baseURL", label: "Base URL",
-                placeholder: p.defaultBaseURL,
+                placeholder: baseURLPlaceholder,
                 isSecure: false, isOptional: true, defaultValue: p.defaultBaseURL
             ),
         ]
@@ -61,8 +68,10 @@ struct OpenAICompatibleLLMConfig<Tag: OpenAICompatibleLLMTag>: LLMProviderConfig
         if Tag.provider.requiresAPIKey {
             guard !key.isEmpty else { return nil }
         }
-        guard let model = credentials["model"], !model.isEmpty
-        else { return nil }
+        let model = credentials["model"] ?? ""
+        if Tag.provider != .custom {
+            guard !model.isEmpty else { return nil }
+        }
         self.apiKey = key
         self.model = model
         let url = credentials["baseURL"]?.isEmpty == false
