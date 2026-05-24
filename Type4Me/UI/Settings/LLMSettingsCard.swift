@@ -259,7 +259,25 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
                     editedFields.insert(field.key)
                 }
             )
-            settingsField(field.label, text: binding, prompt: field.placeholder)
+            HStack(alignment: .top, spacing: 4) {
+                settingsField(field.label, text: binding, prompt: field.placeholder)
+                if field.key == "model" {
+                    Button {
+                        fetchModels()
+                    } label: {
+                        if isFetchingModels {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .help(L("从 API 获取模型列表", "Fetch models from API"))
+                    .disabled(isFetchingModels || !hasLLMCredentials)
+                    .padding(.top, 18)
+                }
+            }
         }
     }
 
