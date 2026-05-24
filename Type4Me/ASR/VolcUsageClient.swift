@@ -17,7 +17,7 @@ enum VolcUsageClient {
     private static let akKey = "tf_volcOpenAPI_AK"
     private static let skKey = "tf_volcOpenAPI_SK"
     private static let region = "cn-north-1"
-    private static let service = "cv"
+    private static let service = "speech_saas_prod"
 
     static var hasCredentials: Bool {
         guard let ak = UserDefaults.standard.string(forKey: akKey), !ak.isEmpty,
@@ -48,7 +48,7 @@ enum VolcUsageClient {
 
         let host = "open.volcengineapi.com"
         let action = "UsageMonitoring"
-        let version = "2024-11-19"
+        let version = "2025-05-21"
         let method = "GET"
         let path = "/"
 

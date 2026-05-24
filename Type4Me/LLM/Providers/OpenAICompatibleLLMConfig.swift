@@ -47,7 +47,7 @@ struct OpenAICompatibleLLMConfig<Tag: OpenAICompatibleLLMTag>: LLMProviderConfig
             CredentialField(
                 key: "model", label: L("模型", "Model"),
                 placeholder: L("模型名称或 endpoint ID", "Model name or endpoint ID"),
-                isSecure: false, isOptional: false,
+                isSecure: false, isOptional: p == .custom,
                 defaultValue: models.first?.value ?? "",
                 options: models, allowCustomInput: true
             ),
@@ -68,8 +68,10 @@ struct OpenAICompatibleLLMConfig<Tag: OpenAICompatibleLLMTag>: LLMProviderConfig
         if Tag.provider.requiresAPIKey {
             guard !key.isEmpty else { return nil }
         }
-        guard let model = credentials["model"], !model.isEmpty
-        else { return nil }
+        let model = credentials["model"] ?? ""
+        if Tag.provider != .custom {
+            guard !model.isEmpty else { return nil }
+        }
         self.apiKey = key
         self.model = model
         let url = credentials["baseURL"]?.isEmpty == false
