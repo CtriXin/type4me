@@ -164,7 +164,8 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
 
     @ViewBuilder
     private func credentialFieldRow(_ field: CredentialField) -> some View {
-        if !field.options.isEmpty && field.allowCustomInput {
+        let isCustomModelField = selectedLLMProvider == .custom && field.key == "model" && !fetchedModelOptions.isEmpty
+        if (!field.options.isEmpty && field.allowCustomInput) || isCustomModelField {
             // Combobox: preset dropdown + "Custom" entry that reveals a text field.
             let mergedOptions = field.key == "model" && !fetchedModelOptions.isEmpty
                 ? fetchedModelOptions
@@ -261,7 +262,7 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
             )
             HStack(alignment: .top, spacing: 4) {
                 settingsField(field.label, text: binding, prompt: field.placeholder)
-                if field.key == "model" {
+                if field.key == "model" && selectedLLMProvider == .custom {
                     Button {
                         fetchModels()
                     } label: {

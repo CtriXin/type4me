@@ -211,13 +211,6 @@ struct ASRSettingsCard: View, SettingsCardHelpers {
 
     // MARK: - ASR Usage Row
 
-    @State private var apiUsage: VolcUsageClient.UsageResult?
-    @State private var apiUsageError: String?
-    @State private var isFetchingUsage = false
-    @State private var volcAK: String = VolcUsageClient.loadCredentials().ak
-    @State private var volcSK: String = VolcUsageClient.loadCredentials().sk
-    @State private var showVolcCreds = false
-
     private var asrUsageRow: some View {
         let seconds = KeychainService.asrUsageSeconds
         let hours = Int(seconds) / 3600
@@ -245,146 +238,36 @@ struct ASRSettingsCard: View, SettingsCardHelpers {
                     .foregroundStyle(TF.settingsAccentBlue)
             }
 
-            // API usage (Volcano only)
+            // Cloud usage link (Volcano only)
             if selectedASRProvider == .volcano {
                 SettingsDivider()
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(L("云端实际用量", "Cloud Usage (API)"))
+                        Text(L("云端实际用量", "Cloud Usage"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(TF.settingsText)
-                        if let err = apiUsageError {
-                            Text(err)
-                                .font(.system(size: 10))
-                                .foregroundStyle(.red)
-                        } else if let usage = apiUsage {
-                            let pct = usage.purchasedHours > 0 ? usage.usedHours / usage.purchasedHours * 100 : 0
-                            Text(String(format: "%.2f / %.2f h (%.0f%%)", usage.usedHours, usage.purchasedHours, pct))
-                                .font(.system(size: 10))
-                                .foregroundStyle(TF.settingsTextSecondary)
-                        } else if !VolcUsageClient.hasCredentials {
-                            Text(L("需配置 OpenAPI 凭证", "Requires OpenAPI credentials"))
-                                .font(.system(size: 10))
-                                .foregroundStyle(TF.settingsTextTertiary)
-                        } else {
-                            Text(L("点击刷新查询", "Tap refresh to query"))
-                                .font(.system(size: 10))
-                                .foregroundStyle(TF.settingsTextTertiary)
-                        }
-                    }
-                    Spacer()
-                    if isFetchingUsage {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Button {
-                            fetchVolcUsage()
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 11))
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(TF.settingsAccentBlue)
-                        .help(L("查询云端用量", "Query cloud usage"))
-                    }
-                }
-
-                // API usage progress bar
-                if let usage = apiUsage, usage.purchasedHours > 0 {
-                    let fraction = min(usage.usedHours / usage.purchasedHours, 1.0)
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(TF.settingsTextTertiary.opacity(0.15))
-                                .frame(height: 6)
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(fraction > 0.8 ? .orange : TF.settingsAccentBlue)
-                                .frame(width: geo.size.width * fraction, height: 6)
-                        }
-                    }
-                    .frame(height: 6)
-                    .padding(.top, 6)
-                }
-
-                // Credentials toggle
-                SettingsDivider()
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { showVolcCreds.toggle() }
-                } label: {
-                    HStack {
-                        Text(L("OpenAPI 凭证（用于查询用量）", "OpenAPI Credentials (for usage query)"))
+                        Text(L("在火山引擎控制台查看用量和额度", "View usage and quota in Volcano Engine Console"))
                             .font(.system(size: 10))
                             .foregroundStyle(TF.settingsTextTertiary)
-                        Spacer()
-                        Image(systemName: showVolcCreds ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 9))
-                            .foregroundStyle(TF.settingsTextTertiary)
                     }
-                }
-                .buttonStyle(.plain)
-
-                if showVolcCreds {
-                    VStack(spacing: 6) {
-                        HStack(spacing: 8) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Access Key ID")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(TF.settingsTextTertiary)
-                                TextField("AK...", text: $volcAK)
-                                    .textFieldStyle(.plain)
-                                    .font(.system(size: 11))
-                                    .padding(6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .stroke(TF.settingsTextTertiary.opacity(0.3), lineWidth: 1)
-                                    )
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Secret Access Key")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(TF.settingsTextTertiary)
-                                SecureField("SK...", text: $volcSK)
-                                    .textFieldStyle(.plain)
-                                    .font(.system(size: 11))
-                                    .padding(6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .stroke(TF.settingsTextTertiary.opacity(0.3), lineWidth: 1)
-                                    )
-                            }
+                    Spacer()
+                    Button {
+                        let appID = KeychainService.loadASRCredentials(for: .volcano)?["appKey"] ?? ""
+                        let urlString = appID.isEmpty
+                            ? "https://console.volcengine.com/speech/service/10038"
+                            : "https://console.volcengine.com/speech/service/10038?AppID=\(appID)"
+                        if let url = URL(string: urlString) {
+                            NSWorkspace.shared.open(url)
                         }
-                        Button {
-                            VolcUsageClient.saveCredentials(ak: volcAK, sk: volcSK)
-                        } label: {
-                            Text(L("保存凭证", "Save Credentials"))
-                                .font(.system(size: 10, weight: .medium))
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(TF.settingsAccentBlue)
+                    } label: {
+                        Image(systemName: "arrow.up.forward.app")
+                            .font(.system(size: 11))
                     }
-                    .padding(.top, 6)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(TF.settingsAccentBlue)
+                    .help(L("打开火山引擎控制台", "Open Volcano Engine Console"))
                 }
-            }
-        }
-    }
-
-    private func fetchVolcUsage() {
-        guard !isFetchingUsage else { return }
-        guard VolcUsageClient.hasCredentials else {
-            apiUsageError = L("请先配置 OpenAPI 凭证", "Configure OpenAPI credentials first")
-            showVolcCreds = true
-            return
-        }
-        isFetchingUsage = true
-        apiUsageError = nil
-        Task {
-            defer { isFetchingUsage = false }
-            do {
-                let result = try await VolcUsageClient.fetchUsage()
-                apiUsage = result
-                apiUsageError = nil
-            } catch {
-                apiUsageError = error.localizedDescription
             }
         }
     }
