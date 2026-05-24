@@ -16,6 +16,9 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
     @State private var testTask: Task<Void, Never>?
     /// Tracks which credential fields are in "custom input" mode (value not in preset options).
     @State private var customModeFields: Set<String> = []
+    @State private var disableThinking: Bool = UserDefaults.standard.object(forKey: "tf_disableThinking") == nil
+        ? true
+        : UserDefaults.standard.bool(forKey: "tf_disableThinking")
 
     private var currentLLMFields: [CredentialField] {
         LLMProviderRegistry.configType(for: selectedLLMProvider)?.credentialFields ?? []
@@ -49,6 +52,26 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
                 credentialSummaryCard(rows: llmSummaryRows)
             } else {
                 dynamicCredentialFields
+            }
+
+            SettingsDivider()
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("禁用思考模式", "Disable Thinking"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(TF.settingsText)
+                    Text(L("关闭后可节省 token 并加快响应", "Off saves tokens and speeds up response"))
+                        .font(.system(size: 10))
+                        .foregroundStyle(TF.settingsTextTertiary)
+                }
+                Spacer()
+                Toggle("", isOn: $disableThinking)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .onChange(of: disableThinking) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "tf_disableThinking")
+                    }
             }
 
             HStack(spacing: 8) {

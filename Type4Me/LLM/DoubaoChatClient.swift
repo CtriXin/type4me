@@ -48,7 +48,15 @@ actor DoubaoChatClient: LLMClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let disableField = provider.thinkingDisableField
+        // tf_disableThinking: true (default) = disable thinking to save tokens;
+        // false = let the model use its default thinking behavior.
+        let disableThinking: Bool = {
+            guard let obj = UserDefaults.standard.object(forKey: "tf_disableThinking") else {
+                return true  // default: thinking disabled
+            }
+            return obj as? Bool ?? true
+        }()
+        let disableField = disableThinking ? provider.thinkingDisableField : nil
         let body = ChatRequest(
             model: config.model,
             messages: [ChatMessage(role: "user", content: finalPrompt)],
