@@ -309,22 +309,71 @@ struct GeneralSettingsTab: View, SettingsCardHelpers {
 
             SettingsDivider()
 
-            recordingPreview
+            recordingPreviewDisclosure
         }
     }
 
     // MARK: - Recording Preview
 
     @State private var previewState = PreviewState()
+    @State private var isRecordingPreviewExpanded = false
+
+    private var recordingPreviewDisclosure: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(TF.springSnappy) {
+                    isRecordingPreviewExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: isRecordingPreviewExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(TF.settingsTextTertiary)
+                        .frame(width: 12)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L("预览效果", "Preview").uppercased())
+                            .font(.system(size: 10, weight: .semibold))
+                            .tracking(0.8)
+                            .foregroundStyle(TF.settingsTextTertiary)
+                        Text(isRecordingPreviewExpanded
+                             ? L("点击隐藏预览", "Click to hide preview")
+                             : L("点击展开预览；默认关闭以降低 CPU 占用", "Click to expand; off by default to reduce CPU usage"))
+                            .font(.system(size: 10))
+                            .foregroundStyle(TF.settingsTextTertiary)
+                    }
+
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isRecordingPreviewExpanded {
+                recordingPreview
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.vertical, 6)
+        .onAppear {
+            if isRecordingPreviewExpanded {
+                previewState.startSimulation()
+            }
+        }
+        .onChange(of: isRecordingPreviewExpanded) { _, expanded in
+            if expanded {
+                previewState.startSimulation()
+            } else {
+                previewState.stopSimulation()
+            }
+        }
+        .onDisappear {
+            previewState.stopSimulation()
+        }
+    }
 
     private var recordingPreview: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(L("预览效果", "Preview").uppercased())
-                .font(.system(size: 10, weight: .semibold))
-                .tracking(0.8)
-                .foregroundStyle(TF.settingsTextTertiary)
-                .padding(.top, 8)
-
             ZStack {
                 Color(white: 0.06, opacity: 0.5)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -333,9 +382,6 @@ struct GeneralSettingsTab: View, SettingsCardHelpers {
             }
             .frame(height: 80)
         }
-        .padding(.vertical, 6)
-        .onAppear { previewState.startSimulation() }
-        .onDisappear { previewState.stopSimulation() }
     }
 
     private var launchAtLoginRow: some View {
