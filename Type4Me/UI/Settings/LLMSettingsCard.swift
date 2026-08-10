@@ -26,6 +26,23 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
         LLMProviderRegistry.configType(for: selectedLLMProvider)?.credentialFields ?? []
     }
 
+    private var modelRefreshButton: some View {
+        Button {
+            fetchModels()
+        } label: {
+            if isFetchingModels {
+                ProgressView().controlSize(.mini)
+            } else {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 11))
+            }
+        }
+        .buttonStyle(.plain)
+        .help(L("从 API 获取模型列表", "Fetch models from API"))
+        .disabled(isFetchingModels || !hasLLMCredentials)
+        .padding(.top, 18)
+    }
+
     /// Effective values: saved base + dirty edits overlaid.
     private var effectiveLLMValues: [String: String] {
         var result = savedLLMValues
@@ -162,19 +179,28 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
         }
     }
 
+    private func comboboxOptions(for field: CredentialField) -> [FieldOption] {
+        let mergedOptions = field.key == "model" && !fetchedModelOptions.isEmpty
+            ? fetchedModelOptions
+            : field.options
+        let customOption = FieldOption(value: CredentialField.customValue, label: L("自定义…", "Custom…"))
+        var opts = mergedOptions + [customOption]
+        let currentVal = llmCredentialValues[field.key] ?? ""
+        if !currentVal.isEmpty && !opts.contains(where: { $0.value == currentVal }) {
+            opts.insert(FieldOption(value: currentVal, label: currentVal), at: 0)
+        }
+        return opts
+    }
+
     @ViewBuilder
     private func credentialFieldRow(_ field: CredentialField) -> some View {
-        if !field.options.isEmpty && field.allowCustomInput {
-            // Combobox: preset dropdown + "Custom" entry that reveals a text field.
-            let mergedOptions = field.key == "model" && !fetchedModelOptions.isEmpty
-                ? fetchedModelOptions
-                : field.options
-            let allOptions = mergedOptions + [FieldOption(value: CredentialField.customValue, label: L("自定义…", "Custom…"))]
+        if field.allowCustomInput {
+            let allOptions = comboboxOptions(for: field)
+            let isCustom = customModeFields.contains(field.key)
+            let presetValues = Set(allOptions.map(\.value))
             let pickerBinding = Binding<String>(
                 get: {
-                    if customModeFields.contains(field.key) {
-                        return CredentialField.customValue
-                    }
+                    if isCustom { return CredentialField.customValue }
                     let val = llmCredentialValues[field.key] ?? ""
                     return val.isEmpty ? (savedLLMValues[field.key] ?? field.defaultValue) : val
                 },
@@ -183,8 +209,13 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
                         customModeFields.insert(field.key)
                         llmCredentialValues[field.key] = ""
                         editedFields.insert(field.key)
-                    } else {
+                    } else if presetValues.contains(newValue) {
+                        // Only exit custom mode if selecting a known preset option.
+                        // Selecting a temp current-value option should not exit custom mode.
                         customModeFields.remove(field.key)
+                        llmCredentialValues[field.key] = newValue
+                        editedFields.insert(field.key)
+                    } else {
                         llmCredentialValues[field.key] = newValue
                         editedFields.insert(field.key)
                     }
@@ -201,23 +232,10 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
                 HStack(spacing: 4) {
                     settingsPickerField(field.label, selection: pickerBinding, options: allOptions)
                     if field.key == "model" {
-                        Button {
-                            fetchModels()
-                        } label: {
-                            if isFetchingModels {
-                                ProgressView().controlSize(.mini)
-                            } else {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.system(size: 11))
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .help(L("从 API 获取模型列表", "Fetch models from API"))
-                        .disabled(isFetchingModels || !hasLLMCredentials)
-                        .padding(.top, 18)
+                        modelRefreshButton
                     }
                 }
-                if customModeFields.contains(field.key) {
+                if isCustom {
                     settingsField("", text: customBinding, prompt: field.placeholder)
                 }
             }
@@ -389,6 +407,7 @@ struct LLMSettingsCard: View, SettingsCardHelpers {
                     .sorted { $0.value < $1.value }
                 guard !Task.isCancelled else { return }
                 fetchedModelOptions = models
+                syncCustomModeFields()
                 NSLog("[Settings] Fetched %d models for %@", models.count, provider.rawValue)
             } catch {
                 guard !Task.isCancelled else { return }

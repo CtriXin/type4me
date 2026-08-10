@@ -197,6 +197,8 @@ struct ASRSettingsCard: View, SettingsCardHelpers {
                 if !selectedASRProvider.isLocal {
                     SettingsDivider()
                     asrUsageRow
+                    SettingsDivider()
+                    cloudUsageRow
                 }
 
 
@@ -235,6 +237,30 @@ struct ASRSettingsCard: View, SettingsCardHelpers {
                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
                 .foregroundStyle(TF.settingsAccentBlue)
         }
+    }
+
+    private var cloudUsageRow: some View {
+        Button {
+            if let url = URL(string: "https://console.volcengine.com/speech/service") {
+                NSWorkspace.shared.open(url)
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("云端实际用量", "Cloud Usage"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(TF.settingsText)
+                    Text(L("在火山引擎控制台查看用量和额度", "View usage and quota on Volcengine console"))
+                        .font(.system(size: 10))
+                        .foregroundStyle(TF.settingsTextTertiary)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right.square")
+                    .font(.system(size: 12))
+                    .foregroundStyle(TF.settingsAccentBlue)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Provider Picker
