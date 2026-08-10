@@ -31,7 +31,7 @@ actor CloudLLMClient: LLMClient {
         // No warmup needed — proxy handles connection pooling
     }
 
-    func process(text: String, prompt: String, config: LLMConfig, onToken: (@Sendable (String) -> Void)? = nil) async throws -> String {
+    func process(text: String, prompt: String, config: LLMConfig) async throws -> String {
         guard let token = await CloudAuthManager.shared.accessToken() else {
             throw CloudLLMError.notAuthenticated
         }

@@ -743,14 +743,12 @@ actor RecognitionSession {
                     }
                     DebugFileLogger.log("stop: fresh LLM firing mode=\(currentMode.name) model=\(llmConfig.model) with \(finalASRText.count) chars +\(ContinuousClock.now - stopT0)")
                     onASREvent?(.processingResult(text: ""))
-                    let onToken = makeStreamingTokenCallback()
                     earlyLLMTask = Task {
                         do {
                             let result = try await client.process(
-                                text: finalASRText, prompt: prompt, config: llmConfig, onToken: onToken
+                                text: finalASRText, prompt: prompt, config: llmConfig
                             )
                             DebugFileLogger.log("stop: fresh LLM done \(result.count) chars +\(ContinuousClock.now - stopT0)")
-                            self.flushStreamingToken(result, onEvent: self.onASREvent)
                             return result
                         } catch {
                             DebugFileLogger.log("stop: fresh LLM FAILED +\(ContinuousClock.now - stopT0) error=\(error)")
@@ -878,14 +876,13 @@ actor RecognitionSession {
                     let prompt = promptContext.expandContextVariables(currentMode.prompt)
                     let textForLLM = finalText
                     onASREvent?(.processingResult(text: ""))
-                    let onToken = makeStreamingTokenCallback()
 
                     let llmResult: String? = await withCheckedContinuation { continuation in
                         let finished = OSAllocatedUnfairLock(initialState: false)
                         let llmTask = Task {
                             do {
                                 let result = try await client.process(
-                                    text: textForLLM, prompt: prompt, config: llmConfig, onToken: onToken
+                                    text: textForLLM, prompt: prompt, config: llmConfig
                                 )
                                 return result.isEmpty ? nil : result
                             } catch {
@@ -1237,7 +1234,7 @@ actor RecognitionSession {
         speculativeLLMTask = Task {
             do {
                 let result = try await client.process(
-                    text: text, prompt: prompt, config: llmConfig, onToken: nil
+                    text: text, prompt: prompt, config: llmConfig
                 )
                 DebugFileLogger.log("speculative LLM: done \(result.count) chars")
                 return result
@@ -1497,28 +1494,6 @@ actor RecognitionSession {
 
     // MARK: - Streaming LLM Callback
 
-    /// Build a token callback that accumulates streaming output and emits
-    /// `processingResult` events at ~20-char intervals to update the floating bar.
-    private func makeStreamingTokenCallback() -> (@Sendable (String) -> Void) {
-        let lock = OSAllocatedUnfairLock(initialState: (buffer: "", emittedLen: 0))
-        let emit = self.onASREvent
-        return { token in
-            lock.withLock { state in
-                state.buffer += token
-                guard state.buffer.count - state.emittedLen >= 20 else { return }
-                state.emittedLen = state.buffer.count
-                let text = state.buffer
-                emit?(.processingResult(text: text))
-            }
-        }
-    }
-
-    /// Emit the final accumulated streaming text (called after LLM returns).
-    private func flushStreamingToken(_ buffer: String, onEvent: (@Sendable (RecognitionEvent) -> Void)?) {
-        if !buffer.isEmpty {
-            onEvent?(.processingResult(text: buffer))
-        }
-    }
 }
 
 // MARK: - String helpers
